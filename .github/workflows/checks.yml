@@ -1,0 +1,33 @@
+name: checks
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install icalendar recurring-ical-events pytest
+
+      - name: Python syntax
+        run: python -m py_compile update_calendar.py
+
+      - name: Unit tests
+        run: pytest -v
+
+      - name: Shell script checks
+        run: |
+          bash -n deploy.sh
+          shellcheck -S warning deploy.sh
+
+      - name: JavaScript syntax check
+        run: |
+          sed -n '/<script>/,/<\/script>/p' index.html | sed '1d;$d' > /tmp/page.js
+          node --check /tmp/page.js

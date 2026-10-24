@@ -4,23 +4,26 @@
     <title>Laser Booking Calendar</title>
     <meta charset="utf-8">
     <style>
-      * { cursor: none !important; }
+      * { cursor: none !important; }   /* kiosk: hide the mouse pointer */
       html, body { margin:0; height:100%; font-family:sans-serif; overflow:hidden; }
       body { display:flex; flex-direction:column; background:#3a3f44; }
+
+      /* Layout: top banner 25%, bottom banner 12.5%, booking list fills the rest */
       .banner { display:flex; align-items:center; justify-content:center; text-align:center;
                 font-weight:bold; color:white; background:gray; }
       #top    { height:25%;   font-size:6vw; }
       #bottom { height:12.5%; font-size:3vw; background:#2b2f33; }
-      #top.free   { background:#1e9e3e; }
-      #top.booked { background:#f57c00; }
+      #top.free   { background:#1e9e3e; }   /* green  */
+      #top.booked { background:#f57c00; }   /* orange */
 
+      /* Booking list */
       #cal { flex:1; overflow:hidden; padding:16px 24px; color:#f0f0f0; }
       .day { font-size:2vw; font-weight:600; color:#b8c0c6; margin:14px 0 6px;
              text-transform:uppercase; letter-spacing:.08em; }
       .ev  { display:flex; gap:24px; align-items:baseline; font-size:2.4vw;
              padding:10px 18px; margin:6px 0; border-radius:12px; background:#4b5157;
              border-left:8px solid #8a949c; }
-      .ev.now { background:#6b4a2a; border-left-color:#f57c00; }
+      .ev.now { background:#6b4a2a; border-left-color:#f57c00; }   /* booking in progress */
       .ev .t  { font-variant-numeric:tabular-nums; min-width:11ch; color:#d0d6da; }
       .ev.now .t { color:#ffcc80; }
       .empty { font-size:2.4vw; color:#a3acb3; padding-top:20px; }
@@ -34,10 +37,13 @@
         <script>
         const pad = n => String(n).padStart(2, "0");
         const hhmm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        // Escape booking titles before inserting them as HTML
         const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+        // The display can't scroll, so cap the list; lower this if the last card is cut off
         const MAX_EVENTS_ON_SCREEN = 8;
 
+        // Draw the booking list, grouped under a heading per day
         function renderCal(events) {
           const el = document.getElementById("cal");
           const now = new Date();
@@ -52,6 +58,7 @@
           el.innerHTML = html || '<div class="empty">No bookings in the next 30 days</div>';
         }
 
+        // Read status.json and update both banners and the list
         async function update() {
           const top = document.getElementById("top");
           const bottom = document.getElementById("bottom");
@@ -59,7 +66,7 @@
             const s = await (await fetch("status.json", { cache: "no-store" })).json();
             if (s.error) throw new Error(s.error);
 
-            // Treat data older than 5 minutes as stale (e.g. cron stopped)
+            // Stale data (e.g. cron stopped) must not show a misleading "FREE"
             if (Date.now() - new Date(s.updated) > 5 * 60 * 1000) throw new Error("stale");
 
             renderCal(s.events || []);
@@ -86,7 +93,7 @@
           }
         }
         update();
-        setInterval(update, 30000);
+        setInterval(update, 30000);   // re-read status.json every 30 s
         </script>
     </body>
 </html>

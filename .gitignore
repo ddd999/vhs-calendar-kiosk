@@ -1,0 +1,15 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Generated at runtime / by deploy.sh
+status.json
+kiosk.sh
+*.tmp
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store

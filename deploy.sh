@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Deploy the laser kiosk on Raspberry Pi OS Trixie (Debian 13, labwc).
 # Usage: ./deploy.sh [--no-kiosk]
+# Safe to re-run: every entry it creates is replaced, not duplicated.
 set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PORT=8000
-TAG="# laser-kiosk"
+TAG="# laser-kiosk"        # marks lines this script owns in crontab/autostart
 KIOSK=1
 [[ "${1:-}" == "--no-kiosk" ]] && KIOSK=0
 
@@ -36,11 +37,13 @@ python3 -m venv "$APP_DIR/.venv"
 
 echo "==> Installing crontab entries"
 PY="$APP_DIR/.venv/bin/python"
-# Keep existing entries, drop any previous laser-kiosk ones (idempotent re-runs)
+# Keep existing entries, drop any previous laser-kiosk ones
 EXISTING="$(crontab -l 2>/dev/null | grep -v -F "$TAG" || true)"
 {
   if [[ -n "$EXISTING" ]]; then printf '%s\n' "$EXISTING"; fi
+  # Refresh status.json every minute (output goes to syslog)
   echo "* * * * * $PY $APP_DIR/update_calendar.py 2>&1 | logger -t laser-kiosk $TAG"
+  # Serve the folder on localhost only, so it isn't exposed on the network
   echo "@reboot cd $APP_DIR && /usr/bin/python3 -m http.server $PORT --bind 127.0.0.1 >/dev/null 2>&1 $TAG"
 } | crontab -
 
@@ -54,7 +57,8 @@ fi
 
 if [[ $KIOSK -eq 1 ]]; then
   echo "==> Writing kiosk.sh"
- cat > "$APP_DIR/kiosk.sh" <<EOF
+  # Escaped \$ characters are written literally into kiosk.sh
+  cat > "$APP_DIR/kiosk.sh" <<EOF
 #!/usr/bin/env bash
 # Wait for the local web server
 until curl -fs http://127.0.0.1:$PORT/ >/dev/null 2>&1; do sleep 1; done
@@ -82,10 +86,12 @@ EOF
   mv "$AUTOSTART.tmp" "$AUTOSTART"
 
   echo "==> Installing blank cursor theme"
+  # labwc has no hide-cursor option, so give the session a transparent cursor
   mkdir -p "$HOME/.icons/blank/cursors"
   printf '[Icon Theme]\nName=blank\n' > "$HOME/.icons/blank/index.theme"
   python3 - <<'PYEOF'
 import struct, os
+# Build a 1x1 fully transparent Xcursor file and alias the common cursor names to it
 img = struct.pack("<9I", 36, 0xfffd0002, 1, 1, 1, 1, 0, 0, 0) + struct.pack("<I", 0)
 hdr = b"Xcur" + struct.pack("<3I", 16, 0x10000, 1) + struct.pack("<3I", 0xfffd0002, 1, 28)
 d = os.path.expanduser("~/.icons/blank/cursors")
@@ -97,6 +103,7 @@ for n in ["default","arrow","pointer","hand1","hand2","text","xterm","watch","wa
         os.symlink("left_ptr", p)
 PYEOF
 
+  # labwc reads this file at startup, so a reboot is needed
   ENVF="$HOME/.config/labwc/environment"
   touch "$ENVF"
   sed -i '/^XCURSOR_THEME=/d;/^XCURSOR_SIZE=/d' "$ENVF"
