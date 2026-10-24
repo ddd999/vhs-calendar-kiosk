@@ -1,4 +1,4 @@
-# Laser Booking Kiosk
+# Laser Booking Display Kiosk
 
 A wall display for a Raspberry Pi that shows whether the laser cutter is free,
 based on a public Google Calendar.
