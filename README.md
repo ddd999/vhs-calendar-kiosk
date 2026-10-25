@@ -43,10 +43,12 @@ No Google Cloud account, API key or OAuth is needed.
 |------|---------|
 | `update_calendar.py` | Fetches the calendar and writes `status.json` |
 | `index.html` | The display page |
-| `deploy.sh` | Installs dependencies, cron entries and kiosk autostart |
+| `deploy.sh` | Creates .venv, installs dependencies listed in pyproject.toml, creates crontab entry, and configures autostart |
 | `test_update_calendar.py` | Unit tests for the booking logic |
 | `.github/workflows/checks.yml` | CI: tests and syntax checks |
 | `status.json`, `kiosk.sh` | Generated at runtime (git-ignored) |
+| `pyproject.toml` | Declares dependencies (used by `uv` on a dev machine and read by `deploy.sh`) |
+| `uv.lock` | Pinned dependency versions for `uv` |
 
 ## Requirements
 
@@ -130,10 +132,19 @@ The display can't scroll, so if the last card is cut off on your screen, lower
 
 **AI DISCLAIMER: THE MAKING OF THIS CODE WAS HEAVILY ASSISTED BY CLAUDE.AI. USE AT YOUR OWN RISK**
 
+Dependencies are declared in `pyproject.toml`. With [uv](https://docs.astral.sh/uv/)
+installed, a fresh clone needs no setup:
+
 ```bash
-uv pip install pytest icalendar recurring-ical-events
-uv run pytest -v
+git clone git@github.com:YOUR_USER/laser-kiosk.git
+cd laser-kiosk
+uv run pytest -v              # creates .venv and installs everything on first run
+uv run update_calendar.py     # writes status.json (needs network access)
+python3 -m http.server 8000   # then open http://localhost:8000
 ```
+
+To add a dependency, run `uv add some-package`. This updates `pyproject.toml` and
+`uv.lock`, and `deploy.sh` picks it up on the Pi the next time you run it.
 
 `compute_status()` is a pure function (no clock or network access), which is
 what makes the booking logic testable. Tests cover back-to-back and overlapping

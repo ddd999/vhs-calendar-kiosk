@@ -15,7 +15,7 @@ if [[ $EUID -eq 0 ]]; then
   exit 1
 fi
 
-for f in index.html update_calendar.py; do
+for f in index.html update_calendar.py pyproject.toml; do
   [[ -f "$APP_DIR/$f" ]] || { echo "Missing $f in $APP_DIR" >&2; exit 1; }
 done
 
@@ -33,7 +33,15 @@ echo "==> Creating Python virtualenv and installing dependencies"
 # Trixie's system Python is "externally managed" (PEP 668), so use a venv
 python3 -m venv "$APP_DIR/.venv"
 "$APP_DIR/.venv/bin/pip" install --upgrade pip
-"$APP_DIR/.venv/bin/pip" install icalendar recurring-ical-events
+
+# Read the runtime dependencies from pyproject.toml (single source of truth).
+# tomllib is in the standard library from Python 3.11; Trixie ships 3.13.
+mapfile -t DEPS < <("$APP_DIR/.venv/bin/python" -c '
+import sys, tomllib
+with open(sys.argv[1], "rb") as f:
+    print("\n".join(tomllib.load(f)["project"]["dependencies"]))
+' "$APP_DIR/pyproject.toml")
+"$APP_DIR/.venv/bin/pip" install "${DEPS[@]}"
 
 echo "==> Installing crontab entries"
 PY="$APP_DIR/.venv/bin/python"
