@@ -9,18 +9,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: pip install icalendar recurring-ical-events pytest
+      - uses: astral-sh/setup-uv@v7
 
       - name: Python syntax
-        run: python -m py_compile update_calendar.py
+        run: uv run --locked python -m py_compile update_calendar.py
 
       - name: Unit tests
-        run: pytest -v
+        run: uv run --locked pytest -v
 
       - name: Shell script checks
         run: |

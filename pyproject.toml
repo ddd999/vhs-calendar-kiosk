@@ -1,0 +1,14 @@
+[project]
+name = "laser-kiosk"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "icalendar",
+    "recurring-ical-events",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.uv]
+package = false   # a set of scripts, not an installable package
